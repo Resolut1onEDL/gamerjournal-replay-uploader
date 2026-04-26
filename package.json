@@ -33,22 +33,25 @@
       "src/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "bin/parser-${os}-${arch}${ext}",
-        "to": "parser${ext}"
-      }
-    ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "extraResources": [
+        { "from": "bin/parser-win-${arch}.exe", "to": "parser.exe" }
+      ]
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "extraResources": [
+        { "from": "bin/parser-mac-${arch}", "to": "parser" }
+      ]
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "extraResources": [
+        { "from": "bin/parser-linux-${arch}", "to": "parser" }
+      ]
     },
     "nsis": {
       "oneClick": false,
