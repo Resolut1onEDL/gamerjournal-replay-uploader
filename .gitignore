@@ -6,3 +6,4 @@ out/
 pending-uploads/
 .env
 .env.local
+.claude/settings.local.json

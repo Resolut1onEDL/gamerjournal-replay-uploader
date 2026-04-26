@@ -61,8 +61,12 @@ function parseReplay(filePath, { timeoutMs = 60000 } = {}) {
         );
       }
       stdout = Buffer.concat(chunks).toString('utf8');
+      // Wrap 17-digit Steam64 numbers as strings before JSON.parse — JS Number
+      // loses precision past 2^53 (e.g. 76561198046990903 → ...904), which breaks
+      // server-side hero matching against profile.steam_account_id.
+      const safe = stdout.replace(/("steamAccountId"\s*:\s*)(\d{16,})/g, '$1"$2"');
       try {
-        const parsed = JSON.parse(stdout);
+        const parsed = JSON.parse(safe);
         resolve({ parsed, parserVersion: parsed.parserVersion ?? 'unknown' });
       } catch (e) {
         reject(new Error(`Parser produced invalid JSON: ${e.message}`));
