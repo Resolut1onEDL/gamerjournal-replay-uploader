@@ -17,9 +17,10 @@ function resolveBinaryPath() {
     const packaged = path.join(process.resourcesPath, `parser${ext}`);
     if (fs.existsSync(packaged)) return packaged;
   }
-  // Dev fallback: pick by platform/arch from <repo>/bin/
-  const platMap = { darwin: 'darwin', win32: 'windows', linux: 'linux' };
-  const archMap = { arm64: 'arm64', x64: 'amd64' };
+  // Dev fallback: pick by platform/arch from <repo>/bin/.
+  // Naming matches electron-builder placeholders: ${os}-${arch}${ext}.
+  const platMap = { darwin: 'mac', win32: 'win', linux: 'linux' };
+  const archMap = { arm64: 'arm64', x64: 'x64' };
   const plat = platMap[process.platform];
   const arch = archMap[process.arch];
   if (!plat || !arch) {
