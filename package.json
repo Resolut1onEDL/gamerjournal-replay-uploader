@@ -40,7 +40,8 @@
       {
         "provider": "github",
         "owner": "Resolut1onEDL",
-        "repo": "gamerjournal-replay-uploader"
+        "repo": "gamerjournal-replay-uploader",
+        "releaseType": "release"
       }
     ],
     "win": {
