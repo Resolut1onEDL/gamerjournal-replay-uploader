@@ -294,6 +294,47 @@ ipcMain.handle('reparse-file', async (_evt, filePath) => {
   return { ok: true };
 });
 
+// Re-parse every .dem in the replays folder and re-upload (upsert by match_id
+// → server overwrites old rows with fresh parser output). Used to backfill
+// after parser bug fixes (e.g. v3.1.0 → v3.1.1 team-detection fix).
+//
+// Sequential, not parallel — parser binary uses ~100MB RAM per spawn and
+// network upload chains. Emits `reparse-progress` events so the UI can
+// show "X / N done".
+ipcMain.handle('reparse-folder', async () => {
+  const dotaPath = store.get('dotaPath');
+  if (!dotaPath) return { ok: false, error: 'Папка Dota 2 не задана' };
+  const replaysPath = getReplaysPath(dotaPath);
+  if (!fs.existsSync(replaysPath)) {
+    return { ok: false, error: `Папка реплеев не найдена: ${replaysPath}` };
+  }
+  const files = fs
+    .readdirSync(replaysPath)
+    .filter((f) => f.toLowerCase().endsWith('.dem'))
+    .map((f) => path.join(replaysPath, f));
+
+  if (files.length === 0) {
+    return { ok: true, total: 0, ok_count: 0, fail_count: 0 };
+  }
+
+  pushLog('info', `Reparse: scanning ${files.length} .dem files`);
+  let ok_count = 0;
+  let fail_count = 0;
+  for (let i = 0; i < files.length; i++) {
+    const fp = files[i];
+    emit('reparse-progress', { current: i + 1, total: files.length, file: path.basename(fp) });
+    try {
+      await processReplay(fp, null);
+      ok_count++;
+    } catch (e) {
+      pushLog('error', `Reparse failed for ${path.basename(fp)}: ${e.message}`);
+      fail_count++;
+    }
+  }
+  emit('reparse-progress', { current: files.length, total: files.length, done: true });
+  return { ok: true, total: files.length, ok_count, fail_count };
+});
+
 // === Auto-updater ===
 // Reads `publish` config from package.json (GitHub provider). On packaged
 // builds, checks the repo's releases for a newer tag and downloads in the
