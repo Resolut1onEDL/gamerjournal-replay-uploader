@@ -349,6 +349,23 @@ ipcMain.handle('quit-and-install', () => {
 ipcMain.handle('get-update-status', () => updateState);
 
 // === Lifecycle ===
+//
+// Enforce single instance — without this, the GSI server's port-3000 bind
+// crashes the new instance on EADDRINUSE whenever an old copy is still in
+// the tray (common after auto-update or accidental double-launch).
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
 app.whenReady().then(() => {
   createWindow();
   createTray();

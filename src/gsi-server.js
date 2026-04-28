@@ -18,9 +18,9 @@ let onMatchEndCallback = null;
  */
 function startGSIServer(port = 3000, onMatchEnd) {
   const app = express();
-  
+
   app.use(express.json({ limit: '1mb' }));
-  
+
   // GSI endpoint - Dota posts game state here
   app.post('/', (req, res) => {
     try {
@@ -38,8 +38,16 @@ function startGSIServer(port = 3000, onMatchEnd) {
     res.json({ status: 'ok', lastMatchId });
   });
 
+  // Listen errors must NOT throw out of the process — Electron treats an
+  // uncaught listen error (EADDRINUSE etc.) as a fatal main-process crash
+  // and dies with a modal. Log it instead; the rest of the app still works
+  // (file watcher + uploader don't depend on GSI).
   server = app.listen(port, '127.0.0.1', () => {
     console.log(`[GSI] Server listening on port ${port}`);
+  });
+  server.on('error', (err) => {
+    console.error(`[GSI] listen failed on ${port}: ${err.message}`);
+    server = null;
   });
 
   onMatchEndCallback = onMatchEnd;
