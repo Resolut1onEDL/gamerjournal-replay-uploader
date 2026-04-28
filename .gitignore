@@ -7,3 +7,7 @@ pending-uploads/
 .env
 .env.local
 .claude/settings.local.json
+
+# Parser binaries — downloaded by scripts/install-parser.js from
+# Resolut1onEDL/dota-replay-parser releases (pinned by package.json `parserVersion`).
+bin/parser-*

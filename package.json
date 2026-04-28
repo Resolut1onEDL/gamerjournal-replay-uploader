@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "description": "Watches Dota 2 replays folder, parses .dem locally with bundled Go binary (manta), uploads parsed JSON to GamerJournal.",
   "main": "src/main.js",
+  "parserVersion": "v3.1.1",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
@@ -10,7 +11,8 @@
     "build:win": "electron-builder --win --publish never",
     "build:mac": "electron-builder --mac --publish never",
     "build:linux": "electron-builder --linux --publish never",
-    "cli": "node scripts/cli-test.js"
+    "cli": "node scripts/cli-test.js",
+    "postinstall": "node scripts/install-parser.js"
   },
   "author": "Resolut1onEDL",
   "license": "MIT",
