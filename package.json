@@ -1,6 +1,6 @@
 {
   "name": "gamerjournal-replay-uploader",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Watches Dota 2 replays folder, parses .dem locally with bundled Go binary (manta), uploads parsed JSON to GamerJournal.",
   "main": "src/main.js",
   "parserVersion": "v3.1.1",
@@ -23,6 +23,7 @@
   "dependencies": {
     "chokidar": "^3.5.3",
     "electron-store": "^8.1.0",
+    "electron-updater": "^6.8.3",
     "express": "^4.18.2"
   },
   "build": {
@@ -35,24 +36,40 @@
       "src/**/*",
       "package.json"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Resolut1onEDL",
+        "repo": "gamerjournal-replay-uploader"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico",
       "extraResources": [
-        { "from": "bin/parser-win-${arch}.exe", "to": "parser.exe" }
+        {
+          "from": "bin/parser-win-${arch}.exe",
+          "to": "parser.exe"
+        }
       ]
     },
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns",
       "extraResources": [
-        { "from": "bin/parser-mac-${arch}", "to": "parser" }
+        {
+          "from": "bin/parser-mac-${arch}",
+          "to": "parser"
+        }
       ]
     },
     "linux": {
       "target": "AppImage",
       "extraResources": [
-        { "from": "bin/parser-linux-${arch}", "to": "parser" }
+        {
+          "from": "bin/parser-linux-${arch}",
+          "to": "parser"
+        }
       ]
     },
     "nsis": {

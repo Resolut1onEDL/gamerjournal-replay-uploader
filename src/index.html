@@ -134,6 +134,17 @@
         <div class="small" id="lastUpload">Последний upload: —</div>
       </div>
 
+      <div class="card" id="updateCard" style="display: none">
+        <div class="row" style="justify-content: space-between">
+          <strong>Обновление</strong>
+          <span id="updateStatus" class="muted">—</span>
+        </div>
+        <div class="row" style="margin-top: 8px">
+          <button class="ghost" id="checkUpdates">Проверить обновления</button>
+          <button id="installUpdate" style="display: none">Перезапустить и установить</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="row" style="justify-content: space-between">
           <strong>Лог</strong>
@@ -216,10 +227,52 @@
         refresh();
       };
 
+      function renderUpdate(s) {
+        // Show the card only once we have a non-trivial update state. Hidden in
+        // dev builds (state stays 'idle' because autoUpdater is disabled there).
+        if (!s || s.state === 'idle') {
+          $('updateCard').style.display = 'none';
+          return;
+        }
+        $('updateCard').style.display = 'block';
+        const status = $('updateStatus');
+        const installBtn = $('installUpdate');
+        installBtn.style.display = 'none';
+        switch (s.state) {
+          case 'checking':       status.textContent = 'проверка…'; break;
+          case 'available':      status.textContent = `доступна v${s.version} — скачивается…`; break;
+          case 'downloading':    status.textContent = `загрузка ${s.progress ?? 0}%`; break;
+          case 'downloaded':     status.textContent = `v${s.version} готова — перезапустить?`;
+                                 installBtn.style.display = 'inline-block'; break;
+          case 'not-available':  status.textContent = `установлена последняя (${s.version ?? ''})`; break;
+          case 'error':          status.textContent = `ошибка: ${s.error}`; break;
+          default:               status.textContent = s.state;
+        }
+      }
+
+      $('checkUpdates').onclick = async () => {
+        $('updateCard').style.display = 'block';
+        $('updateStatus').textContent = 'проверка…';
+        const r = await window.api.checkForUpdates();
+        if (!r.ok) {
+          $('updateStatus').textContent = `ошибка: ${r.error}`;
+        }
+      };
+
+      $('installUpdate').onclick = async () => {
+        const r = await window.api.quitAndInstall();
+        if (!r.ok) setMsg(`Не удалось: ${r.error}`, 'err');
+      };
+
       window.api.onEvent(({ name, payload }) => {
         if (name === 'log') appendLog(payload);
         if (name === 'upload-success' || name === 'upload-error' || name === 'parse-error') refresh();
+        if (name === 'update-status') renderUpdate(payload);
       });
+
+      // Pull initial update state on load (covers the case where check ran
+      // before this window opened from tray).
+      window.api.getUpdateStatus().then(renderUpdate);
 
       refresh();
     </script>

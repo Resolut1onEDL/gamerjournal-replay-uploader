@@ -11,6 +11,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const Store = require('electron-store');
+const { autoUpdater } = require('electron-updater');
 
 const { startGSIServer, stopGSIServer } = require('./gsi-server');
 const { startWatcher, stopWatcher } = require('./file-watcher');
@@ -293,6 +294,60 @@ ipcMain.handle('reparse-file', async (_evt, filePath) => {
   return { ok: true };
 });
 
+// === Auto-updater ===
+// Reads `publish` config from package.json (GitHub provider). On packaged
+// builds, checks the repo's releases for a newer tag and downloads in the
+// background. Renderer drives UI via `update-status` events; manual button
+// triggers `check-for-updates`.
+//
+// Status lifecycle (state field): idle → checking → available → downloading
+// → downloaded → (user clicks restart) → quitAndInstall.
+// `not-available` and `error` are terminal until next manual check.
+let updateState = { state: 'idle', version: null, progress: null, error: null };
+
+function setUpdateState(patch) {
+  updateState = { ...updateState, ...patch };
+  emit('update-status', updateState);
+}
+
+if (app.isPackaged) {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.logger = { info: (m) => pushLog('info', `update: ${m}`),
+                         warn: (m) => pushLog('warn', `update: ${m}`),
+                         error: (m) => pushLog('error', `update: ${m}`),
+                         debug: () => {} };
+
+  autoUpdater.on('checking-for-update', () => setUpdateState({ state: 'checking', error: null }));
+  autoUpdater.on('update-available', (info) => setUpdateState({ state: 'available', version: info.version, error: null }));
+  autoUpdater.on('update-not-available', (info) => setUpdateState({ state: 'not-available', version: info.version, error: null }));
+  autoUpdater.on('download-progress', (p) => setUpdateState({ state: 'downloading', progress: Math.round(p.percent) }));
+  autoUpdater.on('update-downloaded', (info) => setUpdateState({ state: 'downloaded', version: info.version, progress: 100 }));
+  autoUpdater.on('error', (err) => setUpdateState({ state: 'error', error: err && err.message ? err.message : String(err) }));
+}
+
+ipcMain.handle('check-for-updates', async () => {
+  if (!app.isPackaged) {
+    return { ok: false, error: 'dev build — auto-update disabled' };
+  }
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return { ok: true, version: result && result.updateInfo ? result.updateInfo.version : null };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
+ipcMain.handle('quit-and-install', () => {
+  if (!app.isPackaged) return { ok: false, error: 'dev build' };
+  if (updateState.state !== 'downloaded') return { ok: false, error: 'no update ready' };
+  // setImmediate so the IPC reply lands before the app shuts down
+  setImmediate(() => autoUpdater.quitAndInstall());
+  return { ok: true };
+});
+
+ipcMain.handle('get-update-status', () => updateState);
+
 // === Lifecycle ===
 app.whenReady().then(() => {
   createWindow();
@@ -334,6 +389,12 @@ app.whenReady().then(() => {
         pushLog('info', `Retry: ${r.succeeded} ok / ${r.failed} fail of ${r.retried}`);
       }
     });
+  }
+
+  // Check for app updates in the background. Runs once on startup; user can
+  // re-trigger from UI. Skipped in dev (autoUpdater throws "not packaged").
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates().catch((e) => pushLog('warn', `update check failed: ${e.message}`));
   }
 });
 
