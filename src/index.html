@@ -120,7 +120,13 @@
           <button class="ghost" id="testConn">Тест соединения</button>
           <button class="ghost" id="installGsi">Поставить GSI</button>
           <button class="ghost" id="retry">Повторить failed</button>
-          <button class="ghost" id="reparseAll">Перепарсить всё</button>
+          <select id="reparseRange" class="ghost" title="За какой период перепарсить .dem">
+            <option value="7">за 7 дней</option>
+            <option value="14" selected>за 14 дней</option>
+            <option value="30">за 30 дней</option>
+            <option value="0">всё</option>
+          </select>
+          <button class="ghost" id="reparseAll">Перепарсить</button>
           <span id="msg" class="muted"></span>
         </div>
       </div>
@@ -229,21 +235,28 @@
       };
 
       $('reparseAll').onclick = async () => {
-        if (!confirm('Перепарсить все .dem из папки реплеев и перезалить в БД? Может занять несколько минут.')) return;
+        const days = Number($('reparseRange').value) || 0;
+        const label =
+          days === 0
+            ? 'все .dem из папки реплеев'
+            : `.dem из папки реплеев за последние ${days} дней`;
+        if (!confirm(`Перепарсить ${label} и перезалить в БД? Может занять несколько минут.`)) return;
         $('reparseAll').disabled = true;
+        $('reparseRange').disabled = true;
         const orig = $('reparseAll').textContent;
         $('reparseAll').textContent = 'Парсинг…';
         try {
-          const r = await window.api.reparseFolder();
+          const r = await window.api.reparseFolder({ days });
           if (!r.ok) {
             setMsg(`Ошибка: ${r.error}`, 'err');
           } else if (r.total === 0) {
-            setMsg('В папке нет .dem файлов', 'warn');
+            setMsg(days > 0 ? `Нет .dem за последние ${days} дней` : 'В папке нет .dem файлов', 'warn');
           } else {
             setMsg(`Готово: ${r.ok_count}/${r.total} ok${r.fail_count ? `, ${r.fail_count} fail` : ''}`, r.fail_count ? 'warn' : 'ok');
           }
         } finally {
           $('reparseAll').disabled = false;
+          $('reparseRange').disabled = false;
           $('reparseAll').textContent = orig;
           refresh();
         }

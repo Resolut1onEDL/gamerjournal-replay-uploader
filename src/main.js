@@ -301,23 +301,38 @@ ipcMain.handle('reparse-file', async (_evt, filePath) => {
 // Sequential, not parallel — parser binary uses ~100MB RAM per spawn and
 // network upload chains. Emits `reparse-progress` events so the UI can
 // show "X / N done".
-ipcMain.handle('reparse-folder', async () => {
+ipcMain.handle('reparse-folder', async (_evt, opts) => {
   const dotaPath = store.get('dotaPath');
   if (!dotaPath) return { ok: false, error: 'Папка Dota 2 не задана' };
   const replaysPath = getReplaysPath(dotaPath);
   if (!fs.existsSync(replaysPath)) {
     return { ok: false, error: `Папка реплеев не найдена: ${replaysPath}` };
   }
+
+  // opts.days: undefined/null/0 = всё, иначе фильтр по mtime за последние N дней.
+  // Дота не меняет mtime после записи реплея, поэтому это надёжный сигнал
+  // даты матча (имена .dem могут не содержать ISO-даты).
+  const days = Number(opts && opts.days) || 0;
+  const cutoffMs = days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
+
   const files = fs
     .readdirSync(replaysPath)
     .filter((f) => f.toLowerCase().endsWith('.dem'))
-    .map((f) => path.join(replaysPath, f));
+    .map((f) => path.join(replaysPath, f))
+    .filter((fp) => {
+      if (cutoffMs === 0) return true;
+      try {
+        return fs.statSync(fp).mtimeMs >= cutoffMs;
+      } catch {
+        return false;
+      }
+    });
 
   if (files.length === 0) {
     return { ok: true, total: 0, ok_count: 0, fail_count: 0 };
   }
 
-  pushLog('info', `Reparse: scanning ${files.length} .dem files`);
+  pushLog('info', `Reparse: scanning ${files.length} .dem files${days > 0 ? ` (last ${days}d)` : ''}`);
   let ok_count = 0;
   let fail_count = 0;
   for (let i = 0; i < files.length; i++) {

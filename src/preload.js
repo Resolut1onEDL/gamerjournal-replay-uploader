@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('api', {
   retryPending: () => ipcRenderer.invoke('retry-pending'),
   getStats: () => ipcRenderer.invoke('get-stats'),
   reparseFile: (filePath) => ipcRenderer.invoke('reparse-file', filePath),
-  reparseFolder: () => ipcRenderer.invoke('reparse-folder'),
+  reparseFolder: (opts) => ipcRenderer.invoke('reparse-folder', opts),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
   getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
