@@ -1,9 +1,9 @@
 {
   "name": "gamerjournal-replay-uploader",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Watches Dota 2 replays folder, parses .dem locally with bundled Go binary (manta), uploads parsed JSON to GamerJournal.",
   "main": "src/main.js",
-  "parserVersion": "v3.1.1",
+  "parserVersion": "v3.1.2",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
