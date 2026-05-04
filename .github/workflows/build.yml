@@ -44,3 +44,42 @@ jobs:
             dist/*.exe.blockmap
             dist/latest.yml
           retention-days: 30
+
+  build-mac:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+
+      # macOS build is unsigned — distribution requires the user to bypass
+      # Gatekeeper once on first launch (right-click → Open, or
+      # `xattr -d com.apple.quarantine` on the .dmg). Code-signing would need
+      # an Apple Developer ID certificate stored as a CI secret.
+      #
+      # We build for arm64 only (Apple Silicon). Add `--x64` to the matrix
+      # if Intel-Mac support is needed later.
+      - name: build (and publish on tag)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            npx electron-builder --mac --arm64 --publish always
+          else
+            npx electron-builder --mac --arm64 --publish never
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-installer
+          path: |
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/latest-mac.yml
+          retention-days: 30
